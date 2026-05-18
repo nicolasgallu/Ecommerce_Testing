@@ -1,0 +1,188 @@
+What is Snowflake?
+
+Snowflake is a data cloud service that allows us to centralize
+data from diferent sources.
+Allowing us to store, transform, query, analyse large amount of data.
+
+Is similar to a Warehouse, but with some steroids:
+Snowflake’s docs describe core concepts like databases, schemas, tables, 
+warehouses, stages, streams, tasks, dynamic tables, and Snowpark as part of the platform.
+
+#Data Engineer Guide to work with snowflake.
+
+1. What kind of data im ingesting?
+CSV
+JSON
+PARQUET
+AVRO
+DATABASES TABLES
+EVENT STREAMS
+LOGS
+
+2. Where the data comes from?
+S3
+Azure Blob Storage
+Google Cloud Storage
+Local files
+Databases
+Kafka / streaming tools
+ETL tools like Fivetran, Airbyte, Matillion, dbt, etc.
+
+3. understanding objects
+
+warehouse: is where the compute is done (this allow u to work with basic sql features and more)
+
+CREATE WAREHOUSE dev_wh
+  WAREHOUSE_SIZE = 'XSMALL'
+  AUTO_SUSPEND = 60
+  AUTO_RESUME = TRUE
+  INITIALLY_SUSPENDED = TRUE;
+
+
+databes: Serves as a way to organize data-project related
+schemas: Serves to organize inter data-project
+tables: Place were we will store the data
+
+
+-Data Ingestions
+
+1. File formats: is the way to tell snowflake how to read.
+In Snowflake, you create a file format with SQL so that you can reuse it for multiple 
+loads. Here’s a simple example for a CSV file:
+CREATE OR REPLACE FILE FORMAT csv_format
+    TYPE = CSV
+    FIELD_DELIMITER = ','
+    SKIP_HEADER = 1
+    NULL_IF = ('NULL', 'null', '')
+    EMPTY_FIELD_AS_NULL = TRUE
+    FIELD_OPTIONALLY_ENCLOSED_BY = '"';
+
+2. Create a Stage: Stage is the landing zone for the data.
+Think about this, the ingestion lands on the stage, and the file format, tells
+snowflake how to read the file
+
+There are internal stages and Externals, in summary internals have the local file scope,
+where basically you load the files into a internal snowflake storage service before
+pushing the data into a table, while externals are "as the name suggest" externals storage
+services, the only supported are (till 2026-05-01):
+- Amazon S3 buckets
+- Google Cloud Storage buckets
+- Microsoft Azure containers
+
+for internals there are some types, for example stage tables are actually
+already builded once you create a table.
+
+
+3. Copy Into Method
+
+
+
+#INGESTION CATCH UP
+-so far we know how to adress ingest in snowflake but in a 
+full refresh and manual level, FULL REFRESH for one hand are simpler and easy
+also with manual ingestion, but those are expensive practice both in time and money.
+List of issues related with full refresh.
+- It costs more compute.
+- It takes longer.
+- It can lock you into long refresh windows.
+- It can break downstream dashboards while rebuilding.
+- It can duplicate data if you append incorrectly.
+- It can erase history if you overwrite incorrectly.
+- It makes recovery harder.
+
+We also have the APPEND method, were instead of Truncating the table
+with the new records, we actually perserve the olds, and add the new ones.
+
+
+We also have the incremental approach, that we are gonna focus on covering.
+
+##INCREMENTAL INGESTION
+Incremental ingestion are what we know in SQL as upserting methods, 
+were we only update what is new.
+
+Logic Concept
+- Detect changed data.
+- Load changed data into a staging/change table.
+- MERGE it into the target table.
+- Only update what needs to change.
+
+The MERGE command is in charge of this operations,
+it can insert, update, or delete rows in a target table based on whether rows match a source dataset.
+The command supports semantics for handling the following cases:
+Values that match (for updates and deletes).
+Values that don’t match (for inserts).
+
+Incremental Logic is based on this question:
+How do I know which rows changed since the last successful run?
+
+To answer that we need one or more fo this keys:
+1. A unique key
+2. A timestamp column
+3. A batch/load date
+4. A source file name
+5. A change-data-capture mechanism
+6. A stream
+
+The most important one is the UNIQUE KEY, this field
+allow us to identify when 2 sources represent the same
+entity/event.
+Examples:
+- order_id
+- customer_id
+- product_id
+- event_id
+- application_id
+- fellow_id
+
+
+Conceptually what we need is to follow a mental model like:
+1. Source table -> this is where our raw data lives.
+2. Target table -> table that we want to maintain incrementally.
+3. Unique key -> identifier to match rows between tables, when dont exist then is new.
+4. Change detection logic -> field that allow us to detect if the row changed since the last sync.
+we can use different strategies, even snowflake streams(we will cover up this in the next chapter)
+5. MERGE statement -> is the snowflake method that allow us to run this operation.
+6. Metadata columns -> this helps you debug and control the pipeline.
+7. Validation checks -> this is the usual D.E sanity check control. asnwering questions
+like this is the "bread of the day".
+- How many rows inserted?
+- How many rows updated?
+- Any duplicates?
+- Any null keys?
+- Did row count increase as expected?
+
+but also and most important, what happend when we have errors? -> WE NEED ANSWERS
+
+
+
+
+LOCAL CLI CONNECTION
+for linux, download the corresponding package according to your pc requiremens,
+and compression tool.
+
+after that go to the snwoflake config file (.toml) and add this data:
+[connections.my_dev_env]
+account = "account identifier"
+user = "user name (from snowflake)"
+password = "user password (from snowflake)"
+
+After doing that u can run the following command to check the connection.
+-- snow connection test --connection my_dev_env
+
+To send a file for example you can use:
+ snow sql --connection my_dev_env -q "PUT your_source_file.csv @%your_target_stage AUTO_COMPRESS=TRUE;"
+
+
+
+
+Some commands that were useful after loading data to stage before the copy.
+
+
+--after a mistake loading a bad file i use it the list and remove commands.
+--LIST @learning_db.raw.%orders;
+--REMOVE @learning_db.raw.%orders/commerce_orders_dataset.csv.gz
+
+
+COPY INTO learning_db.raw.orders
+FROM @learning_db.raw.%orders
+FILE_FORMAT = (FORMAT_NAME = 'learning_db.raw.csv_format')
