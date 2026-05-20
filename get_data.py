@@ -1,12 +1,12 @@
 import kagglehub
 import openpyxl
-"""
+#"""
 #Download latest version
 path = kagglehub.dataset_download("hammadansari7/e-commerce-orders-and-customer-analytics-dataset",
                                   output_dir='/home/nicolas/Escritorio/work/personal/snowflake_project/dataset',force_download=True)
 print("Path to dataset files:", path)
 #Understand the Data Structure
-"""
+#"""
 
 """
 # Check for missing values in the DataFrame
@@ -29,6 +29,7 @@ print(data_types)
 
 import pandas as pd
 import csv
+from datetime import datetime
 data = pd.read_excel('dataset/ecommerce_orders_dataset.csv.xlsx')
 data.to_csv('commerce_orders_dataset.csv',index=False)
 
@@ -46,11 +47,16 @@ with open(input_file, "r", encoding="utf-8") as infile, \
     
     # Copy header
     header = next(reader)
+    header.append('updated_at')
     writer.writerow(header)
     
+    header = header[:-1]
+    print(header)
     for row in reader:
+        print(row)
         # Example: If your row normally has 5 columns, but rows with the bad float have 6
         if len(row) > len(header):
+            print("yes")
             # Let's say the float was split across index 3 and 4 (e.g., ['id', 'name', '50.00', '00', 'status'])
             # Identify where the split happened based on your specific data structure:
             split_idx = 2 # Change this to the index where the number starts
@@ -62,7 +68,8 @@ with open(input_file, "r", encoding="utf-8") as infile, \
             
             # Reconstruct the row
             row[split_idx] = clean_float
-            del row[split_idx + 1] # Remove the extra split piece
+            del row[split_idx + 1]
+        row.append(datetime.now())
             
         writer.writerow(row)
 
