@@ -1,41 +1,37 @@
 #include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
-
-void names() {
-    printf("nicolas");
-}
-
-void options(int num) {
-    if (num == 2) {
-        printf("%c\n","loquita");
-    }
-    else {
-        printf("\nnot loquita");
-    }
-}
-
-void lup() {
-    for (int i = 0; i < 5; i++) {
-    printf("%d\n", i);
-}
-}
+struct sock_addr {
+    char family;
+    char port; 
+    char addr;
+};
 
 
 int main() {
 
-    int num = 12;
-    float flt = 12.0;
-    double dbl = 12.0505050;
-    char name[] = "nicolas vito sebas";
+    int sock_descriptor = socket(AF_INET, SOCK_STREAM, 0);
 
-    printf("%d\n", num);
-    printf("%f\n", flt);
-    printf("%f\n", flt);
-    printf("%s\n", name);
-    names();
-    options(num);
-    lup();
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_port = htons(8080);
+    address.sin_addr.s_addr = INADDR_ANY;
 
+    int bind_result = bind(
+        sock_descriptor,
+        (struct sockaddr *)&address,
+        sizeof(address)
+    );
+
+    int listen_result = listen(sock_descriptor, 10);
+
+    while (1) {
+        int client_fd = accept(sock_descriptor, NULL, NULL);
+        printf("%s\n","hello server!");
+        close(client_fd);
+    }
+    close(sock_descriptor);
     return 0;
-
 }
