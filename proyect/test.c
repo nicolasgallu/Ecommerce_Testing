@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <time.h>
+#include <inttypes.h>
+#include <time.h>
+
+
+int workers;
 
 typedef struct {
     FILE *adrss_fp;
@@ -13,22 +19,23 @@ void* aux(void* arg) {
     int partition, start, end;
     
     partition = tabla->partition;
-    start = tabla->partition * (tabla->records/2);
-    end = (tabla->partition + 1) * (tabla->records/2);
+    start = tabla->partition * (tabla->records / workers);
+    end = (tabla->partition + 1) * (tabla->records / workers);
 
     char line[100];
 
-    printf("valores iniciales'\n");
-    printf("start: %d\n", start);
-    printf("end: %d\n", end);
     FILE *fp = tabla->adrss_fp;
-    printf("did it.\n");
     for (int i = start; i <= end; i++) {
         snprintf(line, sizeof(line), "Partition: %d, ID: %d\n", partition, i);
         fprintf(fp,line);
     };
-
     return NULL;
+};
+
+int aux_time()
+{
+    time_t result = time(NULL);
+    int epch_time = (intmax_t)result;
 };
 
 int main() {
@@ -45,30 +52,46 @@ int main() {
     if (user_choice == 0) {
         return 0;
     };
-    
+
+    printf("Sr, how many Workers do u need?: \n");
+    scanf("%d", &workers);
+
     int lines = (1000000000 * gigas) / 25;
-    FILE *fp = fopen("data.csv", "w");
-    Table tabla[2];
-    tabla[0].adrss_fp = fp;
-    tabla[1].adrss_fp = fp;
-    tabla[0].partition = 0;
-    tabla[1].partition = 1;
-    tabla[0].records = lines;
-    tabla[1].records = lines;
 
-    pthread_t th[2];
+    Table tabla[workers];    
+    pthread_t th[workers];
 
-    for (int i=0; i < 2; i++){
+    int start,end;
+
+    start = aux_time();
+    printf("started epch: %d\n",start);
+
+
+    for (int i=0; i<workers; i++) {
+        char name[15];
+        snprintf(name, sizeof(name), "data_%d.csv", i);
+        tabla[i].adrss_fp = fopen(name, "w");
+        tabla[i].partition = i;
+        tabla[i].records = lines;
         printf("particion inicial: %d\n",i);
-        
         pthread_create(&th[i], NULL, aux, &tabla[i]);
-    };
+    }
 
-    for (int i=0; i < 2; i++){
+    for (int i=0; i < workers; i++){
         pthread_join(th[i], NULL);
     };
 
-    fclose(fp);
+    
+    for (int i=0; i < workers; i++){
+        FILE  *fp = tabla[i].adrss_fp;
+        fclose(fp);
+    };
+    
+    end = aux_time();
+    printf("ended epch: %d\n",end);
+
+    int dif = end - start;
+    printf("segundos pasados: %d\n",dif);
 
     return 0;
 
