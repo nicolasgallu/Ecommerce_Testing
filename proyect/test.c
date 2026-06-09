@@ -4,6 +4,8 @@
 #include <time.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <math.h>
+#include <inttypes.h>
 
 
 int workers;
@@ -11,8 +13,9 @@ int workers;
 typedef struct {
     FILE *adrss_fp;
     int partition;
-    int records;
+    long int records;
     float progress;
+    int flag_finish;
     } Table;
 
 typedef struct {
@@ -21,38 +24,53 @@ typedef struct {
 
 void* progress_bar(void* arg){
     ProgressTracker *ptracker = (ProgressTracker *) arg;
-    int cond = 0; 
     float progress;
-    float total_progress;
+    int total = 0;
+    int instance = 0;
     sleep(3);
-    while (total_progress < 300) {
-        system("clear");
-        for (int i=0; i<workers; i++) {
-            cond++;
+    printf("\033[?25l");
+    #define GREEN "\033[32m"
+    #define WHT "\e[0;37m"
+
+    while (total < workers) {
+        total = 0;
+        for (int i = 0; i < workers; i++) {
             Table *pointer = ptracker->ptr_table[i];
-            progress = pointer->progress;
-            printf("Puntero: %p | Progress: %3.f %%\n", pointer, progress);
-            total_progress = total_progress + progress;
+
+            printf(GREEN "[Puntero: %p | Progress: %4.f %%]\n",  pointer, pointer->progress);   
+    
+            total += pointer->flag_finish; 
+            //en la ultima iter tengo que subir N veces.
+            if (i == workers-1 & total < workers) {
+                for (int x = 0; x < workers; x++){
+                    printf("\033[1A");
+                }
+                printf("\r");
+            }
         }
-}
+        fflush(stdout);
+    }
+    printf(WHT "\n");
+    printf("\033[?25h");
 }
 
 void* aux(void* arg) {
     Table *tabla = (Table *) arg;
-    int partition, start, end;
-    
+    int partition;
+    long int start, end;
+    tabla->flag_finish = 0;
     partition = tabla->partition;
-    start = tabla->partition * (tabla->records / workers);
-    end = (tabla->partition + 1) * (tabla->records / workers);
+    start = partition * (tabla->records / workers);
+    end = (partition + 1) * (tabla->records / workers);
 
     char line[100];
-
     FILE *fp = tabla->adrss_fp;
-    for (int i = start; i <= end; i++) {
-        snprintf(line, sizeof(line), "Partition: %d, ID: %d\n", partition, i);
+    for (long int i = start; i <= end; i++) {
+        snprintf(line, sizeof(line), "Partition: %d, ID: %d\n", partition, "0");
         fprintf(fp,line);
-        tabla->progress = (i/end) * 100 ;
+        tabla->progress = ((float)i/ (float)end) * 100.0;
     };
+    tabla->flag_finish = 1;
     return NULL;
 };
 
@@ -79,8 +97,11 @@ int main() {
 
     printf("Sr, how many Workers do u need?: \n");
     scanf("%d", &workers);
+    long int bytes_size = (pow(1000, 3) * gigas);
+    printf("bytes_size: %" PRIu64 "\n", bytes_size);
+    long int records = bytes_size / 25;
+    printf("Records per Partition: %d\n", records);
 
-    int lines = (1000000000 * gigas) / 25;
 
     Table tabla[workers];
     ProgressTracker ptracking;
@@ -90,8 +111,6 @@ int main() {
     int start,end;
 
     start = aux_time();
-    printf("started epch: %d\n",start);
-
     
     pthread_create(&th_master, NULL, progress_bar, &ptracking);
     for (int i=0; i<workers; i++) {
@@ -100,8 +119,7 @@ int main() {
         snprintf(name, sizeof(name), "data_%d.csv", i);
         tabla[i].adrss_fp = fopen(name, "w");
         tabla[i].partition = i;
-        tabla[i].records = lines;
-        printf("particion inicial: %d\n",i);
+        tabla[i].records = records;
         pthread_create(&th[i], NULL, aux, &tabla[i]);
     }
     
@@ -118,8 +136,6 @@ int main() {
     };
     
     end = aux_time();
-    printf("ended epch: %d\n",end);
-
     int dif = end - start;
     printf("segundos pasados: %d\n",dif);
 
