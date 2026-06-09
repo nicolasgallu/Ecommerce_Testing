@@ -9,6 +9,7 @@
 
 
 int workers;
+int workers_activated = 0;
 
 typedef struct {
     FILE *adrss_fp;
@@ -19,7 +20,7 @@ typedef struct {
     } Table;
 
 typedef struct {
-    Table *ptr_table[4];
+    Table *ptr_table[10];
     } ProgressTracker;
 
 void* progress_bar(void* arg){
@@ -27,20 +28,21 @@ void* progress_bar(void* arg){
     float progress;
     int total = 0;
     int instance = 0;
-    sleep(3);
     printf("\033[?25l");
     #define GREEN "\033[32m"
     #define WHT "\e[0;37m"
-
+    while (workers_activated == 0) {
+        printf("Master esperando threads...");
+        printf("\r");
+        fflush(stdout);
+    }
+    sleep(1);
     while (total < workers) {
         total = 0;
         for (int i = 0; i < workers; i++) {
             Table *pointer = ptracker->ptr_table[i];
-
             printf(GREEN "[Puntero: %p | Progress: %4.f %%]\n",  pointer, pointer->progress);   
-    
             total += pointer->flag_finish; 
-            //en la ultima iter tengo que subir N veces.
             if (i == workers-1 & total < workers) {
                 for (int x = 0; x < workers; x++){
                     printf("\033[1A");
@@ -49,30 +51,34 @@ void* progress_bar(void* arg){
             }
         }
         fflush(stdout);
+        usleep(200000);
     }
-    printf(WHT "\n");
+    printf(WHT"\n");
     printf("\033[?25h");
+    printf("main thread finished.\n");
 }
 
+
 void* aux(void* arg) {
+    while (workers_activated == 0) {
+    }    
     Table *tabla = (Table *) arg;
+    tabla->flag_finish = 0;
     int partition;
     long int start, end;
-    tabla->flag_finish = 0;
     partition = tabla->partition;
     start = partition * (tabla->records / workers);
     end = (partition + 1) * (tabla->records / workers);
-
     char line[100];
     FILE *fp = tabla->adrss_fp;
     for (long int i = start; i <= end; i++) {
-        snprintf(line, sizeof(line), "Partition: %d, ID: %d\n", partition, "0");
+        snprintf(line, sizeof(line), "Customer_ID: %d, Money: %d", i, 200);
         fprintf(fp,line);
         tabla->progress = ((float)i/ (float)end) * 100.0;
     };
     tabla->flag_finish = 1;
     return NULL;
-};
+}
 
 int aux_time()
 {
@@ -102,7 +108,6 @@ int main() {
     long int records = bytes_size / 25;
     printf("Records per Partition: %d\n", records);
 
-
     Table tabla[workers];
     ProgressTracker ptracking;
     pthread_t th[workers];
@@ -113,6 +118,7 @@ int main() {
     start = aux_time();
     
     pthread_create(&th_master, NULL, progress_bar, &ptracking);
+    
     for (int i=0; i<workers; i++) {
         ptracking.ptr_table[i] = &tabla[i];
         char name[15];
@@ -122,12 +128,13 @@ int main() {
         tabla[i].records = records;
         pthread_create(&th[i], NULL, aux, &tabla[i]);
     }
-    
 
+    workers_activated =1;
+    
+    
     for (int i=0; i < workers; i++){
         pthread_join(th[i], NULL);
     };
-
     pthread_join(th_master, NULL);
 
     for (int i=0; i < workers; i++){
@@ -138,7 +145,6 @@ int main() {
     end = aux_time();
     int dif = end - start;
     printf("segundos pasados: %d\n",dif);
-
     return 0;
 
 }
