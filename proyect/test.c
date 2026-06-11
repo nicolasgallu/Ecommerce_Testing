@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <inttypes.h>
+#include <string.h>
 
 
 int workers;
@@ -62,20 +63,64 @@ void* progress_bar(void* arg){
 void* aux(void* arg) {
     while (workers_activated == 0) {
     }    
+    //initializing variables
     Table *tabla = (Table *) arg;
+    FILE *fp = tabla->adrss_fp;
     tabla->flag_finish = 0;
     int partition;
     long int start, end;
+    char buffer[4000];
+    char new_row[50];
+    int used_buffer = 0;
+    //accesing table data
     partition = tabla->partition;
     start = partition * (tabla->records / workers);
     end = (partition + 1) * (tabla->records / workers);
-    char line[100];
-    FILE *fp = tabla->adrss_fp;
+    unsigned int seed = time(NULL) ^ pthread_self();
+
+    time_t currentTime = time(NULL);
+    struct tm timeinfo;
+    localtime_r(&currentTime, &timeinfo);
+    char now[32];
+    strftime(now, sizeof(now), "%Y-%m-%d %H:%M:%S", &timeinfo);
+
+    //CSV Headers
+    fprintf(fp,"id,customer_ID,amount,created_at\n");
     for (long int i = start; i <= end; i++) {
-        snprintf(line, sizeof(line), "Customer_ID: %d, Money: %d", i, 200);
-        fprintf(fp,line);
-        tabla->progress = ((float)i/ (float)end) * 100.0;
+        
+        int amount = rand_r(&seed) %1000;
+        int user_id = rand_r(&seed) %100;
+        
+        if (i%10000 == 0){
+            strftime(now, sizeof(now), "%Y-%m-%d %H:%M:%S", &timeinfo);
+            tabla->progress = ((float)i/ (float)end) * 100.0;
+        }
+         /*
+            amount = max num of bytes = 4 bytes        
+            user_id = max num of bytes = 4 bytes
+            now =  32 bytes
+            i = max num of byes = 8 bytes
+            salto de linea = 2bytes
+            total per line in worst case scenario = 50 bytes
+         */
+        int row_size = snprintf(new_row, sizeof(new_row), "%d,%d,%d,%s\n", i, amount, user_id, now);
+
+        if (used_buffer + row_size <= sizeof(buffer)) {
+            memcpy(buffer + used_buffer, new_row, row_size);
+            used_buffer += row_size;
+        }
+
+        else {
+            fwrite(buffer, 1, used_buffer, fp);
+            fwrite(new_row, 1, row_size, fp);
+            used_buffer = 0;
+        }
+        
     };
+    
+    if (used_buffer > 0 ) {
+            fwrite(buffer, 1, used_buffer, fp);
+        }
     tabla->flag_finish = 1;
     return NULL;
 }
@@ -90,6 +135,7 @@ int main() {
 
     int gigas;
     int user_choice;
+    srand(time(NULL));
 
     printf("Welcome Sr, how many Gigas do u want for today?: \n");
     scanf("%d", &gigas);

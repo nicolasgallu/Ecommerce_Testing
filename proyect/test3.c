@@ -4,10 +4,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-int main()
-{    //(float) ((i/end) * 100)
-    float num = 39998;
-    float base = 40000;
-    float result = num / base;
-    printf("result %f", result);
+
+
+int main(){      
+    time_t currentTime;
+    time(&currentTime); // Get the current time
+    printf("%s", ctime(&currentTime));
+    srand(time(NULL)); 
+    int r = rand() % 10;
+    printf("%d\n", r);
 }
