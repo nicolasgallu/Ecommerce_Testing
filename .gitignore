@@ -8,3 +8,4 @@ terraform_prod/.terraform.lock.hcl
 terraform_prod/.terraform.lock.hcl
 terraform_prod/terraform.tfstate
 terraform_prod/terraform.tfvars
+terraform_prod/terraform.tfstate.backup

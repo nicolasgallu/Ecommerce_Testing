@@ -19,3 +19,22 @@ variable "bucket_location" {
   description = "Location of the GCS bucket."
   default     = "US"
 }
+
+variable "gbq_raw_dataset_id" {
+  type        = string
+  description = "BigQuery dataset ID."
+}
+
+variable "gbq_raw_location" {
+  type        = string
+  description = "BigQuery dataset location, for example US, EU, or us-central1."
+}
+
+variable "gbq_raw_environment" {
+  type        = string
+  description = "Environment name, for example dev, staging, or prod."
+}
+
+variable "gbq_staging_orders_table" {
+  type = string
+}
