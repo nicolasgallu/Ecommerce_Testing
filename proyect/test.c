@@ -2,7 +2,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
-#include <inttypes.h>
 #include <unistd.h>
 #include <math.h>
 #include <inttypes.h>
@@ -167,8 +166,8 @@ int main() {
     
     for (int i=0; i<workers; i++) {
         ptracking.ptr_table[i] = &tabla[i];
-        char name[15];
-        snprintf(name, sizeof(name), "data_%d.csv", i);
+        char name[20];
+        snprintf(name, sizeof(name), "./data/data_%d.csv", i);
         tabla[i].adrss_fp = fopen(name, "w");
         tabla[i].partition = i;
         tabla[i].records = records;

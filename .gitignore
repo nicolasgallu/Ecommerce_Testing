@@ -2,5 +2,9 @@ dataset/
 commerce_orders_dataset_new.csv
 commerce_orders_dataset.csv
 sflake_project/
-terraform_prod/
 proyect/data.csv
+terraform_prod/.terraform
+terraform_prod/.terraform.lock.hcl
+terraform_prod/.terraform.lock.hcl
+terraform_prod/terraform.tfstate
+terraform_prod/terraform.tfvars

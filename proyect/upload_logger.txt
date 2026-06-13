@@ -1,0 +1,3 @@
+data_0.csv succesfully loaded in GCS
+data_1.csv succesfully loaded in GCS
+data_2.csv succesfully loaded in GCS
