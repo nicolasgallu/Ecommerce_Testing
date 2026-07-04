@@ -1,3 +1,6 @@
 data_0.csv
+data_0.csv_compresse.csv.gz
 data_1.csv
+data_1.csv_compresse.csv.gz
 data_2.csv
+data_2.csv_compresse.csv.gz
